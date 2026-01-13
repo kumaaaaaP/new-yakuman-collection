@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>役満カレンダー</title>
+    <title>役満カレンダー | 月別アーカイブ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet">
@@ -18,13 +18,14 @@
         .today-num { color: #d4af37; text-decoration: underline; }
         .has-post { transition: 0.3s; }
         .has-post:hover { opacity: 0.8; transform: scale(0.98); }
+        .nav-btn { transition: all 0.2s; border: 1px solid rgba(212, 175, 55, 0.2); }
+        .nav-btn:hover { background: #d4af37; color: black; border-color: #d4af37; }
     </style>
 </head>
 <body class="bg-zinc-950 pb-20">
 
     <header class="py-10 text-center border-b border-white/5 bg-black/50 backdrop-blur-md sticky top-0 z-50">
         <h1 class="text-2xl font-serif gold-text tracking-[0.2em] uppercase">Yakuman Calendar</h1>
-        <p class="text-[10px] text-zinc-500 mt-1">月間ベスト和了アーカイブ</p>
         <div class="mt-6">
             <a href="index.html" class="inline-flex items-center text-xs text-zinc-400 hover:text-white transition-colors border border-zinc-800 px-6 py-2 rounded-full bg-zinc-900/50">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
@@ -34,7 +35,15 @@
     </header>
 
     <main class="container mx-auto px-2 mt-8 max-w-5xl">
-        <div id="calendar-title" class="text-center mb-8 text-2xl font-serif gold-text tracking-widest"></div>
+        <div class="flex items-center justify-between mb-8 px-4">
+            <button onclick="changeMonth(-1)" class="nav-btn px-4 py-2 rounded-lg text-xs font-bold text-yellow-500">
+                &larr; 前月
+            </button>
+            <div id="calendar-title" class="text-2xl font-serif gold-text tracking-widest"></div>
+            <button onclick="changeMonth(1)" class="nav-btn px-4 py-2 rounded-lg text-xs font-bold text-yellow-500">
+                次月 &rarr;
+            </button>
+        </div>
         
         <div class="rounded-xl overflow-hidden border border-zinc-800 shadow-2xl">
             <div class="calendar-grid">
@@ -54,39 +63,45 @@
     <script>
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT37Jv511HtrakgPHKRH1fassEFnddSsgkvA8RSiGSo4viHEuGnEyQ5a0jLE4kZQPlWD5abA1EO30Rd/pub?gid=1253971321&single=true&output=csv';
         
+        // 現在表示している年月を保持
+        let currentDisplayDate = new Date();
+        let allPostData = [];
+
         async function init() {
             Papa.parse(csvUrl, {
                 download: true,
                 header: true,
                 complete: function(results) {
-                    const data = results.data.filter(row => row['タイムスタンプ']);
-                    createCalendar(data);
+                    allPostData = results.data.filter(row => row['タイムスタンプ']);
+                    renderCalendar();
                 }
             });
         }
 
-        function createCalendar(data) {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth();
+        function renderCalendar() {
+            const year = currentDisplayDate.getFullYear();
+            const month = currentDisplayDate.getMonth();
             document.getElementById('calendar-title').innerText = `${year} . ${String(month + 1).padStart(2, '0')}`;
 
             const firstDay = new Date(year, month, 1).getDay();
             const lastDate = new Date(year, month + 1, 0).getDate();
             const body = document.getElementById('calendar-body');
+            body.innerHTML = ''; // カレンダーをクリア
 
             // 前月の余白
             for (let i = 0; i < firstDay; i++) {
                 body.insertAdjacentHTML('beforeend', '<div class="day-cell bg-zinc-950/50"></div>');
             }
 
+            // 今日の日付を取得（ハイライト用）
+            const realToday = new Date();
+
             // 日付の生成
             for (let day = 1; day <= lastDate; day++) {
-                // スラッシュ形式の比較用日付文字列を作成 (例: 2026/01/13)
                 const targetDate = `${year}/${String(month + 1).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
                 
-                // その日の投稿を検索
-                const dayPost = data.find(row => row['和了日'] === targetDate);
+                // その日の投稿を検索（複数ある場合は最初の一件を表示）
+                const dayPost = allPostData.find(row => row['和了日'] === targetDate);
                 
                 let content = '';
                 if (dayPost) {
@@ -101,7 +116,7 @@
                     `;
                 }
 
-                const isToday = (day === now.getDate() && month === now.getMonth()) ? 'today-num' : '';
+                const isToday = (day === realToday.getDate() && month === realToday.getMonth() && year === realToday.getFullYear()) ? 'today-num' : '';
                 body.insertAdjacentHTML('beforeend', `
                     <div class="day-cell">
                         <span class="day-num ${isToday}">${day}</span>
@@ -109,6 +124,12 @@
                     </div>
                 `);
             }
+        }
+
+        // 月を切り替える関数
+        function changeMonth(diff) {
+            currentDisplayDate.setMonth(currentDisplayDate.getMonth() + diff);
+            renderCalendar();
         }
 
         init();
