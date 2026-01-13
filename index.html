@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>役満クラウドアーカイブ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@700&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #0a0a0a; color: #e0e0e0; font-family: 'Noto Sans JP', sans-serif; }
+        .font-serif { font-family: 'Noto Serif JP', serif; }
+        .gold-text { color: #d4af37; }
+        .card { background: #161616; border: 1px solid rgba(255,255,255,0.05); transition: 0.3s; }
+        .card:hover { border-color: #d4af37; transform: translateY(-4px); }
+        .bg-pattern { background-image: radial-gradient(circle at 2px 2px, rgba(212, 175, 55, 0.05) 1px, transparent 0); background-size: 30px 30px; }
+        
+        /* セレクトボックスの装飾（iOS/iPad対応） */
+        select { 
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23d4af37'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E"); 
+            background-position: right 0.5rem center; 
+            background-repeat: no-repeat; 
+            background-size: 1.5em 1.5em; 
+            padding-right: 2.5rem; 
+            -webkit-appearance: none; 
+            appearance: none; 
+        }
+    </style>
+</head>
+<body class="bg-pattern min-h-screen">
+
+    <header class="py-12 text-center border-b border-white/5 bg-black/50 backdrop-blur-md sticky top-0 z-50">
+        <h1 class="text-3xl md:text-5xl font-serif gold-text tracking-widest uppercase">Yakuman Archive</h1>
+        <div class="mt-6 flex justify-center gap-4">
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSc5auDIaxps9lD7oU9juwPKwk1gyWOVz7Icgi-px_2Rqq9DTw/viewform" target="_blank" class="bg-yellow-600 text-black px-8 py-3 rounded-full font-bold hover:bg-yellow-500 transition-all shadow-lg shadow-yellow-900/20">
+                ＋ 役満を投稿する
+            </a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-12">
+        <div class="mb-12 flex flex-wrap justify-center gap-6">
+            <div class="flex flex-col items-center gap-2">
+                <label class="text-[10px] text-zinc-500 tracking-widest uppercase">Filter by Yakuman</label>
+                <select id="filter-yakuman" onchange="renderGallery()" class="w-48 bg-zinc-900 border border-zinc-700 text-yellow-500 px-4 py-2 rounded-lg outline-none cursor-pointer hover:border-yellow-600 transition-all text-xs">
+                    <option value="all">すべての役満</option>
+                  <optgroup label="通常役満" class="bg-black text-gray-400">
+                    <option value="国士無双">国士無双</option>
+                    <option value="四暗刻">四暗刻</option>
+                    <option value="大三元">大三元</option>
+                    <option value="字一色">字一色</option>
+                    <option value="小四喜">小四喜</option>
+                    <option value="緑一色">緑一色</option>
+                    <option value="九蓮宝燈">九蓮宝燈</option>
+                    <option value="清老頭">清老頭</option>
+                    <option value="天和">天和</option>
+                    <option value="地和">地和</option>
+                    <option value="四槓子">四槓子</option>
+                </optgroup>
+                <optgroup label="上位・複合役満" class="bg-black text-gray-400">
+                    <option value="四暗刻単騎">四暗刻単騎</option>
+                    <option value="国士無双十三面待ち">国士無双十三面待ち</option>
+                    <option value="大四喜">大四喜</option>
+                    <option value="純正九蓮宝燈">純正九蓮宝燈</option>
+                    <option value="複合役満">複合役満</option>
+                </optgroup>
+                <optgroup label="数え役満" class="bg-black text-gray-400">
+                    <option value="数え役満(13飜)">数え役満(13飜)</option>
+                    <option value="数え役満(14飜)">数え役満(14飜)</option>
+                    <option value="数え役満(15飜)">数え役満(15飜)</option>
+                    <option value="数え役満(16飜)">数え役満(16飜)</option>
+                    <option value="数え役満(17飜)">数え役満(17飜)</option>
+                    <option value="数え役満(18飜)">数え役満(18飜)</option>
+                    <option value="数え役満(19飜)">数え役満(19飜)</option>
+                    <option value="数え役満(20飜)">数え役満(20飜)</option>
+                    <option value="数え役満(21飜以上)">数え役満(21飜以上)</option>
+                </optgroup>
+            </select>
+        </div>
+
+            <div class="flex flex-col items-center gap-2">
+                <label class="text-[10px] text-zinc-500 tracking-widest uppercase">Filter by Place</label>
+                <select id="filter-place" onchange="renderGallery()" class="w-48 bg-zinc-900 border border-zinc-700 text-yellow-500 px-4 py-2 rounded-lg outline-none cursor-pointer hover:border-yellow-600 transition-all text-xs">
+                    <option value="all">すべての場所</option>
+                    <option value="友人戦">友人戦</option>
+                    <option value="大会戦">大会戦</option>
+                    <option value="銅の間">銅の間</option>
+                    <option value="銀の間">銀の間</option>
+                    <option value="金の間">金の間</option>
+                    <option value="玉の間">玉の間</option>
+                    <option value="王座の間">王座の間</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="gallery" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="text-center col-span-full py-20">
+                <p class="text-gray-500 animate-pulse font-serif tracking-widest">LOADING DATA...</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT37Jv511HtrakgPHKRH1fassEFnddSsgkvA8RSiGSo4viHEuGnEyQ5a0jLE4kZQPlWD5abA1EO30Rd/pub?gid=1253971321&single=true&output=csv';
+        let allData = [];
+
+        async function init() {
+            Papa.parse(csvUrl, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    allData = results.data.filter(row => row['タイムスタンプ']).reverse();
+                    renderGallery();
+                }
+            });
+        }
+
+        function renderGallery() {
+            const yakumanFilter = document.getElementById('filter-yakuman').value;
+            const placeFilter = document.getElementById('filter-place').value;
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            const filtered = allData.filter(row => {
+                const rowYakuman = row['役名'] || '';
+                const rowPlace = row['和了場所'] || '';
+                const matchYakuman = (yakumanFilter === 'all' || rowYakuman === yakumanFilter);
+                const matchPlace = (placeFilter === 'all' || rowPlace === placeFilter);
+                return matchYakuman && matchPlace;
+            });
+
+            if (filtered.length === 0) {
+                gallery.innerHTML = '<div class="col-span-full text-center py-20 text-zinc-600 font-serif tracking-widest text-sm">該当する記録が見つかりません。</div>';
+                return;
+            }
+
+            filtered.forEach(row => {
+                const imgUrl = row['和了画像'];
+                const place = row['和了場所'] || '不明';
+                const yakuman = row['役名'] || '役満';
+                const date = row['和了日'] || '不明';
+                const desc = row['簡易解説'] || '解説なし';
+
+                const card = `
+                    <div class="card rounded-xl overflow-hidden shadow-2xl flex flex-col border border-white/5">
+                        <div class="aspect-video bg-zinc-900 relative overflow-hidden">
+                            ${imgUrl ? 
+                                `<img src="${imgUrl}" class="w-full h-full object-cover transition-transform duration-700 hover:scale-110" alt="yakuman">` : 
+                                '<div class="flex items-center justify-center h-full text-zinc-700 italic">No Image</div>'}
+                            <div class="absolute top-3 left-3">
+                                <span class="bg-black/70 backdrop-blur-md text-yellow-500 text-[9px] px-3 py-1 rounded-full border border-yellow-500/20 font-bold tracking-wider">
+                                    ${place}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="p-6 flex-grow flex flex-col bg-gradient-to-b from-transparent to-black/20">
+                            <div class="flex justify-between items-baseline mb-4">
+                                <h2 class="text-xl font-serif gold-text leading-tight">${yakuman}</h2>
+                                <span class="text-[10px] text-zinc-500 font-mono tracking-tighter shrink-0 ml-2">${date}</span>
+                            </div>
+                            <div class="mt-auto">
+                                <p class="text-xs text-zinc-400 leading-relaxed border-l border-zinc-800 pl-4 py-1 h-12 line-clamp-2 italic">
+                                    ${desc}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                gallery.insertAdjacentHTML('beforeend', card);
+            });
+        }
+
+        init();
+        setInterval(init, 60000);
+    </script>
+</body>
+</html>
