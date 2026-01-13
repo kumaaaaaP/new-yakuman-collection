@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>役満カレンダー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #0a0a0a; color: #e0e0e0; font-family: sans-serif; }
+        .font-serif { font-family: 'Noto Serif JP', serif; }
+        .gold-text { color: #d4af37; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #222; }
+        .day-cell { background: #0f0f0f; min-height: 100px; position: relative; overflow: hidden; }
+        @media (min-width: 768px) { .day-cell { min-height: 140px; } }
+        .day-num { position: absolute; top: 4px; left: 6px; z-index: 20; font-size: 0.7rem; font-weight: bold; color: #888; text-shadow: 1px 1px 2px black; }
+        .today-num { color: #d4af37; text-decoration: underline; }
+        .has-post { transition: 0.3s; }
+        .has-post:hover { opacity: 0.8; transform: scale(0.98); }
+    </style>
+</head>
+<body class="bg-zinc-950 pb-20">
+
+    <header class="py-10 text-center border-b border-white/5 bg-black/50 backdrop-blur-md sticky top-0 z-50">
+        <h1 class="text-2xl font-serif gold-text tracking-[0.2em] uppercase">Yakuman Calendar</h1>
+        <p class="text-[10px] text-zinc-500 mt-1">月間ベスト和了アーカイブ</p>
+        <div class="mt-6">
+            <a href="index.html" class="inline-flex items-center text-xs text-zinc-400 hover:text-white transition-colors border border-zinc-800 px-6 py-2 rounded-full bg-zinc-900/50">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                ギャラリーに戻る
+            </a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-2 mt-8 max-w-5xl">
+        <div id="calendar-title" class="text-center mb-8 text-2xl font-serif gold-text tracking-widest"></div>
+        
+        <div class="rounded-xl overflow-hidden border border-zinc-800 shadow-2xl">
+            <div class="calendar-grid">
+                <div class="bg-zinc-900/80 py-3 text-center text-[10px] text-red-500 font-bold">SUN</div>
+                <div class="bg-zinc-900/80 py-3 text-center text-[10px] text-zinc-500 font-bold">MON</div>
+                <div class="bg-zinc-900/80 py-3 text-center text-[10px] text-zinc-500 font-bold">TUE</div>
+                <div class="bg-zinc-900/80 py-3 text-center text-[10px] text-zinc-500 font-bold">WED</div>
+                <div class="bg-zinc-900/80 py-3 text-center text-[10px] text-zinc-500 font-bold">THU</div>
+                <div class="bg-zinc-900/80 py-3 text-center text-[10px] text-zinc-500 font-bold">FRI</div>
+                <div class="bg-zinc-900/80 py-3 text-center text-[10px] text-blue-500 font-bold">SAT</div>
+            </div>
+            <div id="calendar-body" class="calendar-grid">
+                </div>
+        </div>
+    </main>
+
+    <script>
+        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT37Jv511HtrakgPHKRH1fassEFnddSsgkvA8RSiGSo4viHEuGnEyQ5a0jLE4kZQPlWD5abA1EO30Rd/pub?gid=1253971321&single=true&output=csv';
+        
+        async function init() {
+            Papa.parse(csvUrl, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    const data = results.data.filter(row => row['タイムスタンプ']);
+                    createCalendar(data);
+                }
+            });
+        }
+
+        function createCalendar(data) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            document.getElementById('calendar-title').innerText = `${year} . ${String(month + 1).padStart(2, '0')}`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDate = new Date(year, month + 1, 0).getDate();
+            const body = document.getElementById('calendar-body');
+
+            // 前月の余白
+            for (let i = 0; i < firstDay; i++) {
+                body.insertAdjacentHTML('beforeend', '<div class="day-cell bg-zinc-950/50"></div>');
+            }
+
+            // 日付の生成
+            for (let day = 1; day <= lastDate; day++) {
+                // スラッシュ形式の比較用日付文字列を作成 (例: 2026/01/13)
+                const targetDate = `${year}/${String(month + 1).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+                
+                // その日の投稿を検索
+                const dayPost = data.find(row => row['和了日'] === targetDate);
+                
+                let content = '';
+                if (dayPost) {
+                    content = `
+                        <a href="index.html" class="block w-full h-full relative has-post">
+                            <img src="${dayPost['和了画像']}" class="w-full h-full object-cover opacity-70">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                            <div class="absolute bottom-1 left-1 right-1 text-[8px] md:text-[9px] truncate gold-text font-serif">
+                                ${dayPost['役名']}
+                            </div>
+                        </a>
+                    `;
+                }
+
+                const isToday = (day === now.getDate() && month === now.getMonth()) ? 'today-num' : '';
+                body.insertAdjacentHTML('beforeend', `
+                    <div class="day-cell">
+                        <span class="day-num ${isToday}">${day}</span>
+                        ${content}
+                    </div>
+                `);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
