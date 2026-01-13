@@ -125,12 +125,15 @@
                 download: true,
                 header: true,
                 complete: function(results) {
-                    // 並び替え処理：タイムスタンプを基準に降順（最新が上）
+                    // 並び替え処理：和了日（または投稿日時）を基準に降順（最新が上）
                     allData = results.data
-                        .filter(row => row['タイムスタンプ'])
+                        .filter(row => row['和了日'] || row['タイムスタンプ'])
                         .sort((a, b) => {
-                            const dateA = new Date(a['タイムスタンプ']);
-                            const dateB = new Date(b['タイムスタンプ']);
+                            const dateA = new Date(a['和了日'] || a['タイムスタンプ']);
+                            const dateB = new Date(b['和了日'] || b['タイムスタンプ']);
+                            // 日付が不正な場合は後ろに回す
+                            if (isNaN(dateA)) return 1;
+                            if (isNaN(dateB)) return -1;
                             return dateB - dateA;
                         });
                     renderGallery();
