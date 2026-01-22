@@ -85,66 +85,99 @@
             });
         }
 
-        function analyzeData(data) {
-            const yakumanMap = {};
-            const placeMap = {};
-            const monthMap = {};
-            const now = new Date();
-            const currentMonthStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}`;
-            let monthCounter = 0;
+        /* ranking.html の <script> 内、analyzeData 関数と renderChart 関数を以下に差し替えてください */
 
-            data.forEach(row => {
-                // 役名集計
-                const y = row['役名'] || '不明';
-                yakumanMap[y] = (yakumanMap[y] || 0) + 1;
+function analyzeData(data) {
+    const yakumanMap = {};
+    const placeMap = {};
+    const monthMap = {};
+    const now = new Date();
+    const currentMonthStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}`;
+    let monthCounter = 0;
 
-                // 場所集計
-                const p = row['和了場所'] || '不明';
-                placeMap[p] = (placeMap[p] || 0) + 1;
+    data.forEach(row => {
+        const y = row['役名'] || '不明';
+        yakumanMap[y] = (yakumanMap[y] || 0) + 1;
+        const p = row['和了場所'] || '不明';
+        placeMap[p] = (placeMap[p] || 0) + 1;
 
-                // 月別集計 (和了日 2025/10/07 形式から取得)
-                if (row['和了日']) {
-                    const m = row['和了日'].substring(0, 7); // "2025/10"
-                    monthMap[m] = (monthMap[m] || 0) + 1;
-                    if (m === currentMonthStr) monthCounter++;
-                }
-            });
-
-            // サマリー更新
-            const sortedYakuman = Object.entries(yakumanMap).sort((a,b) => b[1] - a[1]);
-            document.getElementById('stat-top-yakuman').innerText = sortedYakuman[0] ? sortedYakuman[0][0] : '-';
-            document.getElementById('stat-month-count').innerText = monthCounter;
-            document.getElementById('stat-place-count').innerText = Object.keys(placeMap).length;
-
-            // 1. 円グラフ（役名）
-            renderChart('chartPie', 'pie', sortedYakuman, ['#d4af37', '#aa8a2e', '#826a24', '#5a4a1a', '#32290f', '#1a1a1a']);
-
-            // 2. ドーナツグラフ（場所）
-            const sortedPlace = Object.entries(placeMap).sort((a,b) => b[1] - a[1]);
-            renderChart('chartDoughnut', 'doughnut', sortedPlace, ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6366f1']);
-
-            // 3. 線グラフ（トレンド）
-            renderTrendChart(monthMap);
+        if (row['和了日']) {
+            const m = row['和了日'].substring(0, 7);
+            monthMap[m] = (monthMap[m] || 0) + 1;
+            if (m === currentMonthStr) monthCounter++;
         }
+    });
 
-        function renderChart(id, type, sortedArray, colors) {
-            new Chart(document.getElementById(id), {
-                type: type,
-                data: {
-                    labels: sortedArray.map(x => x[0]),
-                    datasets: [{
-                        data: sortedArray.map(x => x[1]),
-                        backgroundColor: colors,
-                        borderWidth: 0
-                    }]
+    const sortedYakuman = Object.entries(yakumanMap).sort((a,b) => b[1] - a[1]);
+    const sortedPlace = Object.entries(placeMap).sort((a,b) => b[1] - a[1]);
+
+    document.getElementById('stat-top-yakuman').innerText = sortedYakuman[0] ? sortedYakuman[0][0] : '-';
+    document.getElementById('stat-month-count').innerText = monthCounter;
+    document.getElementById('stat-place-count').innerText = Object.keys(placeMap).length;
+
+    // 役名用：コントラストの強い20色パレット
+    const yakumanColors = [
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', 
+        '#FF9F40', '#C9CBCF', '#45f542', '#f542e3', '#42f5f5',
+        '#f5b342', '#8c42f5', '#f54242', '#4257f5', '#42f593',
+        '#f59642', '#42b6f5', '#e9f542', '#78909C', '#5D4037'
+    ];
+
+    // 場所用：雀魂の段位をイメージした色
+    const placeColors = {
+        '友人戦': '#9E9E9E', // グレー
+        '大会戦': '#607D8B', // ブルーグレー
+        '銅の間': '#CD7F32', // 銅
+        '銀の間': '#C0C0C0', // 銀
+        '金の間': '#D4AF37', // 金
+        '玉の間': '#00BCD4', // 水色
+        '王座の間': '#9C27B0' // 紫
+    };
+    const mappedPlaceColors = sortedPlace.map(x => placeColors[x[0]] || '#444444');
+
+    renderChart('chartPie', 'pie', sortedYakuman, yakumanColors);
+    renderChart('chartDoughnut', 'doughnut', sortedPlace, mappedPlaceColors);
+    renderTrendChart(monthMap);
+}
+
+function renderChart(id, type, sortedArray, colors) {
+    new Chart(document.getElementById(id), {
+        type: type,
+        data: {
+            labels: sortedArray.map(x => x[0]),
+            datasets: [{
+                data: sortedArray.map(x => x[1]),
+                backgroundColor: colors,
+                borderColor: '#0a0a0a', // 境界線を黒にして見やすく
+                borderWidth: 2
+            }]
+        },
+        options: {
+            plugins: { 
+                legend: { 
+                    position: 'bottom', 
+                    labels: { 
+                        color: '#bbb', 
+                        font: { size: 10 },
+                        padding: 15,
+                        usePointStyle: true 
+                    } 
                 },
-                options: {
-                    plugins: { 
-                        legend: { position: 'bottom', labels: { color: '#888', font: { size: 9 }, usePointStyle: true } }
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const value = context.raw;
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return ` ${context.label}: ${value}回 (${percentage}%)`;
+                        }
                     }
                 }
-            });
+            },
+            maintainAspectRatio: false
         }
+    });
+}
 
         function renderTrendChart(monthMap) {
             const sortedMonths = Object.keys(monthMap).sort();
