@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>役満アナリティクス | 多角的分析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #050505; color: #e0e0e0; font-family: sans-serif; }
+        .font-serif { font-family: 'Noto Serif JP', serif; }
+        .gold-text { color: #d4af37; }
+        .card-dark { background: #111; border: 1px solid rgba(255, 255, 255, 0.05); }
+    </style>
+</head>
+<body class="pb-20">
+
+    <header class="py-10 text-center bg-black/80 backdrop-blur-md sticky top-0 z-50 border-b border-yellow-900/20">
+        <h1 class="text-2xl font-serif gold-text tracking-widest uppercase">Yakuman Analytics</h1>
+        <div class="mt-4 flex justify-center gap-4">
+            <a href="index.html" class="text-[10px] text-zinc-500 hover:text-white border border-zinc-800 px-4 py-1 rounded-full transition">← GALLERY</a>
+            <a href="calendar.html" class="text-[10px] text-zinc-500 hover:text-white border border-zinc-800 px-4 py-1 rounded-full transition">CALENDAR</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 mt-8 max-w-6xl">
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="card-dark p-6 rounded-2xl text-center">
+                <p class="text-[10px] text-zinc-500 uppercase">Total</p>
+                <div id="stat-total" class="text-3xl font-serif gold-text">-</div>
+            </div>
+            <div id="stat-most-common-box" class="card-dark p-6 rounded-2xl text-center">
+                <p class="text-[10px] text-zinc-500 uppercase">Most Common</p>
+                <div id="stat-top-yakuman" class="text-sm font-bold mt-2 truncate">-</div>
+            </div>
+            <div class="card-dark p-6 rounded-2xl text-center border-l-2 border-l-yellow-600">
+                <p class="text-[10px] text-zinc-500 uppercase">This Month</p>
+                <div id="stat-month-count" class="text-3xl font-serif text-white">-</div>
+            </div>
+            <div class="card-dark p-6 rounded-2xl text-center">
+                <p class="text-[10px] text-zinc-500 uppercase">Places</p>
+                <div id="stat-place-count" class="text-3xl font-serif text-white">-</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="card-dark p-6 rounded-2xl">
+                <h3 class="text-sm font-serif gold-text mb-6">役名別の出現割合</h3>
+                <div class="aspect-square max-h-[300px] mx-auto">
+                    <canvas id="chartPie"></canvas>
+                </div>
+            </div>
+
+            <div class="card-dark p-6 rounded-2xl">
+                <h3 class="text-sm font-serif gold-text mb-6">和了場所の分布</h3>
+                <div class="aspect-square max-h-[300px] mx-auto">
+                    <canvas id="chartDoughnut"></canvas>
+                </div>
+            </div>
+
+            <div class="card-dark p-6 rounded-2xl md:col-span-2">
+                <h3 class="text-sm font-serif gold-text mb-6">月別出現トレンド</h3>
+                <div class="h-[250px]">
+                    <canvas id="chartLine"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT37Jv511HtrakgPHKRH1fassEFnddSsgkvA8RSiGSo4viHEuGnEyQ5a0jLE4kZQPlWD5abA1EO30Rd/pub?gid=1253971321&single=true&output=csv';
+        
+        async function init() {
+            Papa.parse(csvUrl, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    const data = results.data.filter(row => row['タイムスタンプ']);
+                    document.getElementById('stat-total').innerText = data.length;
+                    analyzeData(data);
+                }
+            });
+        }
+
+        function analyzeData(data) {
+            const yakumanMap = {};
+            const placeMap = {};
+            const monthMap = {};
+            const now = new Date();
+            const currentMonthStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}`;
+            let monthCounter = 0;
+
+            data.forEach(row => {
+                // 役名集計
+                const y = row['役名'] || '不明';
+                yakumanMap[y] = (yakumanMap[y] || 0) + 1;
+
+                // 場所集計
+                const p = row['和了場所'] || '不明';
+                placeMap[p] = (placeMap[p] || 0) + 1;
+
+                // 月別集計 (和了日 2025/10/07 形式から取得)
+                if (row['和了日']) {
+                    const m = row['和了日'].substring(0, 7); // "2025/10"
+                    monthMap[m] = (monthMap[m] || 0) + 1;
+                    if (m === currentMonthStr) monthCounter++;
+                }
+            });
+
+            // サマリー更新
+            const sortedYakuman = Object.entries(yakumanMap).sort((a,b) => b[1] - a[1]);
+            document.getElementById('stat-top-yakuman').innerText = sortedYakuman[0] ? sortedYakuman[0][0] : '-';
+            document.getElementById('stat-month-count').innerText = monthCounter;
+            document.getElementById('stat-place-count').innerText = Object.keys(placeMap).length;
+
+            // 1. 円グラフ（役名）
+            renderChart('chartPie', 'pie', sortedYakuman, ['#d4af37', '#aa8a2e', '#826a24', '#5a4a1a', '#32290f', '#1a1a1a']);
+
+            // 2. ドーナツグラフ（場所）
+            const sortedPlace = Object.entries(placeMap).sort((a,b) => b[1] - a[1]);
+            renderChart('chartDoughnut', 'doughnut', sortedPlace, ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6366f1']);
+
+            // 3. 線グラフ（トレンド）
+            renderTrendChart(monthMap);
+        }
+
+        function renderChart(id, type, sortedArray, colors) {
+            new Chart(document.getElementById(id), {
+                type: type,
+                data: {
+                    labels: sortedArray.map(x => x[0]),
+                    datasets: [{
+                        data: sortedArray.map(x => x[1]),
+                        backgroundColor: colors,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { color: '#888', font: { size: 9 }, usePointStyle: true } }
+                    }
+                }
+            });
+        }
+
+        function renderTrendChart(monthMap) {
+            const sortedMonths = Object.keys(monthMap).sort();
+            new Chart(document.getElementById('chartLine'), {
+                type: 'line',
+                data: {
+                    labels: sortedMonths,
+                    datasets: [{
+                        label: '出現数',
+                        data: sortedMonths.map(m => monthMap[m]),
+                        borderColor: '#d4af37',
+                        backgroundColor: 'rgba(212, 175, 55, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: '#222' }, ticks: { color: '#666' } },
+                        y: { grid: { color: '#222' }, ticks: { color: '#666', stepSize: 1 } }
+                    }
+                }
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
